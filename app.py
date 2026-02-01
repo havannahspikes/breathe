@@ -10,7 +10,7 @@ Behavior:
    between MIN_INTERVAL and MAX_INTERVAL seconds (defaults: 15..49)
 
 ENV vars:
- - TARGET_URL       : where /send_wave will GET (default: https://who-i-am-uzh6.onrender.com/life)
+ - TARGET_URL       : where /send_wave will GET (default: https://who-i-am-uzh6.onrender.com/pulse_receiver)
  - FORWARD_URL      : where inbound pulses are forwarded (default: TARGET_URL.rstrip('/') + '/pulse_receiver')
  - FORWARD_TOKEN    : optional header value X-PULSE-TOKEN when forwarding
  - AUTO_PING        : "true"/"1"/"yes" to enable background pinger (default: true)
@@ -157,3 +157,4 @@ if __name__ == "__main__":
         send_once_and_exit()
     # dev server for local testing — use gunicorn in production
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5001)))
+
