@@ -1,1 +1,1 @@
-web: gunicorn breathe:app
+web: gunicorn app:app
