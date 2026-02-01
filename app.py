@@ -5,13 +5,13 @@ breathe.py — small Flask app + background auto-pinger (multi-target).
 Behavior:
  - GET  /             -> status JSON (shows forward_to list)
  - GET  /send_wave    -> send a single GET to TARGET_URL
- - POST /receive_pulse-> forward the incoming JSON/form to FORWARD_URL(S) (with optional X-PULSE-TOKEN)
+ - POST /receive_pulse-> forward the incoming JSON/form to FORWARD_URLS (with optional X-PULSE-TOKEN)
  - Background thread (daemon) optionally sends POST pulses to FORWARD_URLS at random intervals
    between MIN_INTERVAL and MAX_INTERVAL.
 
 ENV vars:
  - TARGET_URL       : where /send_wave will GET (default: https://who-i-am-uzh6.onrender.com/pulse_receiver)
- - FORWARD_URL      : single legacy forward target (kept for compatibility)
+ - FORWARD_URL      : legacy single forward target (kept for compatibility)
  - FORWARD_URLS     : comma-separated list of forward targets (preferred)
  - FORWARD_TOKEN    : optional header value X-PULSE-TOKEN when forwarding
  - AUTO_PING        : "true"/"1"/"yes" to enable background pinger (default: true)
@@ -34,7 +34,7 @@ except Exception:
     requests = None
 
 # configuration (defaults tuned to your request)
-TARGET_URL = os.environ.get("TARGET_URL", "https://who-i-am-uzh6.onrender.com/life")
+TARGET_URL = os.environ.get("TARGET_URL", "https://who-i-am-uzh6.onrender.com/pulse_receiver")
 # legacy single forward
 FORWARD_URL = os.environ.get("FORWARD_URL", (os.environ.get("TARGET_URL") or TARGET_URL).rstrip("/") + "/pulse_receiver")
 # preferred: comma-separated list of forward URLs
@@ -83,7 +83,8 @@ def root():
         "auto_ping": AUTO_PING,
         "min_interval": MIN_INTERVAL,
         "max_interval": MAX_INTERVAL,
-        "forward_to": FORWARD_URLS
+        "forward_to": FORWARD_URLS,
+        "per_target_delay": PER_TARGET_DELAY
     })
 
 @app.route("/send_wave", methods=["GET"])
