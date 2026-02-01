@@ -36,26 +36,28 @@ except Exception:
     requests = None
 
 # ------------------------
-# Defaults
+# Default targets
 # ------------------------
 DEFAULT_TARGET_BASE = "https://who-i-am-uzh6.onrender.com"
 DEFAULT_PULSE_PATH = "/pulse_receiver"
 
+# default list of all important targets
+DEFAULT_FORWARD_URLS = [
+    "https://who-i-am-uzh6.onrender.com",
+    "https://tomorrow-personal-app.onrender.com",
+    "https://breathe-5006.onrender.com"
+]
+
 # ------------------------
 # Config (env-driven)
 # ------------------------
-# TARGET_URL is used only by /send_wave test route — accept either a base or full path
 TARGET_URL = os.environ.get("TARGET_URL", DEFAULT_TARGET_BASE).strip()
-
-# Legacy single forward
 LEGACY_FORWARD = os.environ.get("FORWARD_URL", "").strip()
-
-# Preferred: comma-separated list (user should provide full URLs or bases)
 raw_list = os.environ.get("FORWARD_URLS", "").strip()
-
-FORWARD_TOKEN = os.environ.get("FORWARD_TOKEN")  # optional X-PULSE-TOKEN when forwarding
-
+FORWARD_TOKEN = os.environ.get("FORWARD_TOKEN")  # optional X-PULSE-TOKEN
 AUTO_PING = os.environ.get("AUTO_PING", "true").lower() in ("1", "true", "yes")
+
+# intervals
 try:
     MIN_INTERVAL = float(os.environ.get("MIN_INTERVAL", "15"))
     MAX_INTERVAL = float(os.environ.get("MAX_INTERVAL", "49"))
@@ -88,13 +90,10 @@ def normalize_target_candidate(candidate: str) -> str:
     c = candidate.strip()
     if not c:
         return None
-    # remove trailing spaces
-    # if it already ends with '/pulse_receiver' (case-insensitive), keep exact form (but remove duplicate slashes)
+    # treat case-insensitively when checking for trailing '/pulse_receiver'
     lower = c.lower().rstrip('/')
     if lower.endswith('/pulse_receiver'):
         # ensure single trailing '/pulse_receiver' and no double slashes
-        # remove trailing slashes from base and re-add
-        # find where '/pulse_receiver' starts in original (case-preserving)
         parts = c.rstrip('/').rsplit('/', 1)
         base = parts[0]
         return base.rstrip('/') + '/pulse_receiver'
@@ -102,23 +101,28 @@ def normalize_target_candidate(candidate: str) -> str:
         # append pulse path
         return c.rstrip('/') + DEFAULT_PULSE_PATH
 
-# Build FORWARD_URLS list robustly:
+# ------------------------
+# Build final FORWARD_URLS list
+# ------------------------
 FORWARD_URLS = []
-if raw_list:
-    # parse comma-separated list and normalize each
-    items = [i.strip() for i in raw_list.split(',') if i.strip()]
-    for it in items:
-        n = normalize_target_candidate(it)
-        if n:
-            FORWARD_URLS.append(n)
-elif LEGACY_FORWARD:
-    # legacy single forward URL provided
-    FORWARD_URLS.append(normalize_target_candidate(LEGACY_FORWARD))
-else:
-    # fallback to TARGET_URL value — allow TARGET_URL to be either base or full path
-    FORWARD_URLS.append(normalize_target_candidate(TARGET_URL or DEFAULT_TARGET_BASE))
 
-# remove duplicates while preserving order
+# 1. Environment variable (preferred)
+if raw_list:
+    items = [i.strip() for i in raw_list.split(',') if i.strip()]
+    FORWARD_URLS.extend(items)
+
+# 2. Legacy single forward
+elif LEGACY_FORWARD:
+    FORWARD_URLS.append(LEGACY_FORWARD)
+
+# 3. Default all important targets (only if no env overrides)
+else:
+    FORWARD_URLS.extend(DEFAULT_FORWARD_URLS)
+
+# normalize
+FORWARD_URLS = [normalize_target_candidate(u) for u in FORWARD_URLS if u]
+
+# remove duplicates, preserve order
 seen = set()
 final_targets = []
 for u in FORWARD_URLS:
