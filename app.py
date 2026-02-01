@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-breathe.py — small Flask app + background auto-pinger (multi-target).
+breathe.py — small Flask app + background auto-pinger (multi-target, fixed path handling).
 
 Behavior:
  - GET  /             -> status JSON (shows forward_to list)
@@ -10,9 +10,10 @@ Behavior:
    between MIN_INTERVAL and MAX_INTERVAL.
 
 ENV vars:
- - TARGET_URL       : where /send_wave will GET (default: https://who-i-am-uzh6.onrender.com/pulse_receiver)
+ - TARGET_URL       : where /send_wave will GET (default: https://who-i-am-uzh6.onrender.com)
  - FORWARD_URL      : legacy single forward target (kept for compatibility)
- - FORWARD_URLS     : comma-separated list of forward targets (preferred)
+ - FORWARD_URLS     : comma-separated list of forward targets (preferred). Can be full path or base. The code
+                      normalizes so each entry ends with /pulse_receiver (but will NOT duplicate it).
  - FORWARD_TOKEN    : optional header value X-PULSE-TOKEN when forwarding
  - AUTO_PING        : "true"/"1"/"yes" to enable background pinger (default: true)
  - MIN_INTERVAL     : min seconds for random interval (default: 15)
@@ -28,26 +29,31 @@ import json
 import sys
 from flask import Flask, request, jsonify
 
-# defensive requests import — app will still run if requests missing
+# defensive requests import — app runs without requests but network ops fail gracefully
 try:
     import requests
 except Exception:
     requests = None
 
 # ------------------------
+# Defaults
+# ------------------------
+DEFAULT_TARGET_BASE = "https://who-i-am-uzh6.onrender.com"
+DEFAULT_PULSE_PATH = "/pulse_receiver"
+
+# ------------------------
 # Config (env-driven)
 # ------------------------
-TARGET_URL = os.environ.get("TARGET_URL", "https://who-i-am-uzh6.onrender.com/pulse_receiver")
-# legacy single forward (kept for compatibility)
-FORWARD_URL = os.environ.get("FORWARD_URL", (os.environ.get("TARGET_URL") or TARGET_URL).rstrip("/") + "/pulse_receiver")
-# preferred: comma-separated list
-raw_list = os.environ.get("FORWARD_URLS", "")
-FORWARD_URLS = [u.strip() for u in raw_list.split(",") if u.strip()]
-# fallback to single FORWARD_URL if no list provided
-if not FORWARD_URLS:
-    FORWARD_URLS = [FORWARD_URL]
+# TARGET_URL is used only by /send_wave test route — accept either a base or full path
+TARGET_URL = os.environ.get("TARGET_URL", DEFAULT_TARGET_BASE).strip()
 
-FORWARD_TOKEN = os.environ.get("FORWARD_TOKEN")  # optional header value X-PULSE-TOKEN when forwarding
+# Legacy single forward
+LEGACY_FORWARD = os.environ.get("FORWARD_URL", "").strip()
+
+# Preferred: comma-separated list (user should provide full URLs or bases)
+raw_list = os.environ.get("FORWARD_URLS", "").strip()
+
+FORWARD_TOKEN = os.environ.get("FORWARD_TOKEN")  # optional X-PULSE-TOKEN when forwarding
 
 AUTO_PING = os.environ.get("AUTO_PING", "true").lower() in ("1", "true", "yes")
 try:
@@ -70,7 +76,59 @@ if PER_TARGET_DELAY < 0:
     PER_TARGET_DELAY = 0.0
 
 # ------------------------
-# App
+# Helper to normalize target URLs
+# ------------------------
+def normalize_target_candidate(candidate: str) -> str:
+    """
+    Accept candidate that may be:
+      - a full URL ending with /pulse_receiver or not
+      - a base like https://example.com (append /pulse_receiver)
+    Return definitive URL that ends with /pulse_receiver (no duplicated segments).
+    """
+    c = candidate.strip()
+    if not c:
+        return None
+    # remove trailing spaces
+    # if it already ends with '/pulse_receiver' (case-insensitive), keep exact form (but remove duplicate slashes)
+    lower = c.lower().rstrip('/')
+    if lower.endswith('/pulse_receiver'):
+        # ensure single trailing '/pulse_receiver' and no double slashes
+        # remove trailing slashes from base and re-add
+        # find where '/pulse_receiver' starts in original (case-preserving)
+        parts = c.rstrip('/').rsplit('/', 1)
+        base = parts[0]
+        return base.rstrip('/') + '/pulse_receiver'
+    else:
+        # append pulse path
+        return c.rstrip('/') + DEFAULT_PULSE_PATH
+
+# Build FORWARD_URLS list robustly:
+FORWARD_URLS = []
+if raw_list:
+    # parse comma-separated list and normalize each
+    items = [i.strip() for i in raw_list.split(',') if i.strip()]
+    for it in items:
+        n = normalize_target_candidate(it)
+        if n:
+            FORWARD_URLS.append(n)
+elif LEGACY_FORWARD:
+    # legacy single forward URL provided
+    FORWARD_URLS.append(normalize_target_candidate(LEGACY_FORWARD))
+else:
+    # fallback to TARGET_URL value — allow TARGET_URL to be either base or full path
+    FORWARD_URLS.append(normalize_target_candidate(TARGET_URL or DEFAULT_TARGET_BASE))
+
+# remove duplicates while preserving order
+seen = set()
+final_targets = []
+for u in FORWARD_URLS:
+    if u not in seen:
+        seen.add(u)
+        final_targets.append(u)
+FORWARD_URLS = final_targets
+
+# ------------------------
+# Flask app + session
 # ------------------------
 app = Flask(__name__)
 _start_time = time.time()
@@ -79,6 +137,11 @@ session = requests.Session() if requests else None
 def _log(*a, **k):
     print(*a, **k)
     sys.stdout.flush()
+
+# Log final forward targets at startup
+_log("breathe: forward targets:")
+for t in FORWARD_URLS:
+    _log("  -", t)
 
 # ------------------------
 # Routes
