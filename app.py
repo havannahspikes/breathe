@@ -41,11 +41,12 @@ except Exception:
 DEFAULT_TARGET_BASE = "https://who-i-am-uzh6.onrender.com"
 DEFAULT_PULSE_PATH = "/pulse_receiver"
 
-# default list of all important targets
+# default list of all important targets (bases; normalization will append /pulse_receiver)
 DEFAULT_FORWARD_URLS = [
     "https://who-i-am-uzh6.onrender.com",
     "https://tomorrow-personal-app.onrender.com",
-    "https://breathe-5006.onrender.com"
+    "https://breathe-5006.onrender.com",
+    "https://church-i0im.onrender.com"
 ]
 
 # ------------------------
@@ -78,7 +79,7 @@ if PER_TARGET_DELAY < 0:
     PER_TARGET_DELAY = 0.0
 
 # ------------------------
-# Helper to normalize target URLs
+# Helper to normalize target URLs (robust: removes any existing /pulse_receiver fragments then appends one)
 # ------------------------
 def normalize_target_candidate(candidate: str) -> str:
     """
@@ -87,19 +88,22 @@ def normalize_target_candidate(candidate: str) -> str:
       - a base like https://example.com (append /pulse_receiver)
     Return definitive URL that ends with /pulse_receiver (no duplicated segments).
     """
+    if not candidate:
+        return None
     c = candidate.strip()
     if not c:
         return None
-    # treat case-insensitively when checking for trailing '/pulse_receiver'
+    # strip trailing whitespace/slashes
+    c = c.rstrip()
+    # remove any number of trailing '/pulse_receiver' (case-insensitive)
+    # so we avoid duplication like '/pulse_receiver/pulse_receiver'
     lower = c.lower().rstrip('/')
-    if lower.endswith('/pulse_receiver'):
-        # ensure single trailing '/pulse_receiver' and no double slashes
-        parts = c.rstrip('/').rsplit('/', 1)
-        base = parts[0]
-        return base.rstrip('/') + '/pulse_receiver'
-    else:
-        # append pulse path
-        return c.rstrip('/') + DEFAULT_PULSE_PATH
+    while lower.endswith('/pulse_receiver'):
+        # remove last segment equal to '/pulse_receiver'
+        c = c[: -len('/pulse_receiver')].rstrip('/')
+        lower = c.lower().rstrip('/')
+    # now re-append single pulse path
+    return c.rstrip('/') + DEFAULT_PULSE_PATH
 
 # ------------------------
 # Build final FORWARD_URLS list
