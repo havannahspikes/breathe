@@ -10,7 +10,7 @@ Behavior:
    between MIN_INTERVAL and MAX_INTERVAL.
 
 ENV vars:
- - TARGET_URL       : where /send_wave will GET (default: https://who-i-am-uzh6.onrender.com)
+ - TARGET_URL       : where /send_wave will GET (default: https://exercise-go9d.onrender.com)
  - FORWARD_URL      : legacy single forward target (kept for compatibility)
  - FORWARD_URLS     : comma-separated list of forward targets (preferred). Can be full path or base. The code
                       normalizes so each entry ends with /pulse_receiver (but will NOT duplicate it).
@@ -38,11 +38,13 @@ except Exception:
 # ------------------------
 # Default targets
 # ------------------------
-DEFAULT_TARGET_BASE = "https://who-i-am-uzh6.onrender.com"
+# set your site as default target so send_wave and pinging will hit it by default
+DEFAULT_TARGET_BASE = "https://exercise-go9d.onrender.com"
 DEFAULT_PULSE_PATH = "/pulse_receiver"
 
 # default list of all important targets (bases; normalization will append /pulse_receiver)
 DEFAULT_FORWARD_URLS = [
+    "https://exercise-go9d.onrender.com",
     "https://who-i-am-uzh6.onrender.com",
     "https://tomorrow-personal-app.onrender.com",
     "https://breathe-5006.onrender.com",
@@ -56,6 +58,7 @@ DEFAULT_FORWARD_URLS = [
 TARGET_URL = os.environ.get("TARGET_URL", DEFAULT_TARGET_BASE).strip()
 LEGACY_FORWARD = os.environ.get("FORWARD_URL", "").strip()
 raw_list = os.environ.get("FORWARD_URLS", "").strip()
+# incoming/outgoing token header name is X-PULSE-TOKEN; set FORWARD_TOKEN to include it when sending
 FORWARD_TOKEN = os.environ.get("FORWARD_TOKEN")  # optional X-PULSE-TOKEN
 AUTO_PING = os.environ.get("AUTO_PING", "true").lower() in ("1", "true", "yes")
 
