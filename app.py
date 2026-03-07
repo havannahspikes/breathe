@@ -45,11 +45,10 @@ DEFAULT_PULSE_PATH = "/pulse_receiver"
 # default list of all important targets (bases; normalization will append /pulse_receiver)
 DEFAULT_FORWARD_URLS = [
     "https://exercise-go9d.onrender.com",
-    "https://who-i-am-uzh6.onrender.com",
     "https://tomorrow-personal-app.onrender.com",
     "https://breathe-5006.onrender.com",
     "https://church-i0im.onrender.com",
-    "https://jevicarn-christian-school-z08v.onrender.com"
+    "https://beacon-cloud.onrender.com"
 ]
 
 # ------------------------
@@ -284,3 +283,4 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5001))
     # dev server for local testing; in prod use gunicorn
     app.run(host="0.0.0.0", port=port)
+
