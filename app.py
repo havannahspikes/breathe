@@ -49,7 +49,8 @@ DEFAULT_FORWARD_URLS = [
     "https://breathe-5006.onrender.com",
     "https://church-i0im.onrender.com",
     "https://beacon-cloud.onrender.com",
-    "https://tomorrowapp.onrender.com/"
+    "https://tomorrowapp.onrender.com",
+    "https://e-agriculture.onrender.com"
 ]
 
 # ------------------------
