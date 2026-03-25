@@ -50,7 +50,8 @@ DEFAULT_FORWARD_URLS = [
     "https://church-i0im.onrender.com",
     "https://beacon-cloud.onrender.com",
     "https://tomorrowapp.onrender.com",
-    "https://e-agriculture.onrender.com"
+    "https://e-agriculture.onrender.com",
+    "https://davidsconnect.onrender.com"
 ]
 
 # ------------------------
